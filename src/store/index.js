@@ -23,6 +23,9 @@ export default new Vuex.Store({
     // Snackbar status & message
     snackbar: false, // show/hide snack
     snackbarMessage: "", // message for snackbar
+    guest: {
+      phone: false,
+    },
   },
   mutations: {
     SET_USER_AUTH(state, val) {
@@ -39,6 +42,9 @@ export default new Vuex.Store({
     },
     SET_SNACKBAR_MESSAGE(state, val) {
       state.snackbarMessage = val;
+    },
+    SET_GUEST(state, val) {
+      state.guest = val;
     },
     ...vuexfireMutations,
   },
@@ -92,6 +98,7 @@ export default new Vuex.Store({
         route = "";
         console.error("There was an error while signing in", error.code);
         console.error(error.message);
+        throw error;
       } finally {
         // console.info("Finally, we'll send you to: /", route)
         route != "" ? router.push({ name: route }) : null;
@@ -155,12 +162,16 @@ export default new Vuex.Store({
      * @param {*} data
      */
     async createUserProfile(context, data) {
-      const { name, email, mobile } = data.formData;
+      const { name, email, mobile, propertyName, propertyAddress } =
+        data.formData;
       try {
         await fb.db.collection("users").doc(data.user.user.uid).set({
+          userId: data.user.user.uid,
           name,
           email,
           mobile,
+          propertyName,
+          propertyAddress,
         });
         router.push({ name: "Login" });
         // dispatch('getUserProfile', data.user.user)
@@ -168,39 +179,79 @@ export default new Vuex.Store({
         console.log(error);
       }
     },
-    async addReview({ state }, payload) {
-      const { phonenumber, score, review } = payload;
+    async addReview({ state, dispatch }, payload) {
+      const { phonenumber, rating, email, incident, name, description } =
+        payload;
       let user = state.userAuth.uid;
+      let property = state.userProfile.propertyName || "n/a";
       try {
         await fb.db.collection("reviews").add({
           user,
+          property,
           phonenumber,
-          score,
-          review,
+          rating,
+          email,
+          incident,
+          name,
+          description,
         });
-        // router.push({ name: 'Login' })
+        dispatch("getReviews", phonenumber);
+        router.push({ name: "Home" });
         // dispatch('getUserProfile', data.user.user)
       } catch (error) {
         console.log(error);
       }
     },
-    async getReviews(context, payload) {
+    async getReviews({ commit }, payload) {
       console.log(payload);
       try {
-        return await fb.db
+        const querySnapshot = await fb.db
           .collection("reviews")
           .where("phonenumber", "==", payload)
-          .get()
-          .then((querySnapshot) => {
-            // querySnapshot.forEach((doc) => {
-            //   // doc.data() is never undefined for query doc snapshots
-            //   console.log(doc.id, " => ", doc.data());
-            // });
-            return querySnapshot;
+          .get();
+        let reviews = [];
+        if (querySnapshot.docs.length) {
+          console.log("YES reviews available");
+          querySnapshot.forEach((doc) => {
+            // doc.data() is never undefined for query doc snapshots
+            reviews.push(doc.data());
+            console.log(doc.id, " => ", doc.data());
           });
+        }
+
+        commit("SET_GUEST", { phone: payload, reviews });
+        return querySnapshot;
+        // return await fb.db
+        //   .collection("reviews")
+        //   .where("phonenumber", "==", payload)
+        //   .get()
+        //   .then((querySnapshot) => {
+        //     // querySnapshot.forEach((doc) => {
+        //     //   // doc.data() is never undefined for query doc snapshots
+        //     //   console.log(doc.id, " => ", doc.data());
+        //     // });
+        //     return querySnapshot;
+        //   });
       } catch (error) {
         console.log("Error getting documents: ", error);
       }
+    },
+  },
+  getters: {
+    reviewSummary: (state) => {
+      let neg = 0,
+        neut = 0,
+        pos = 0;
+      state.guest.reviews.forEach((review) => {
+        review.rating == 3 ? neut++ : false;
+        review.rating > 3 ? pos++ : false;
+        review.rating < 3 ? neg++ : false;
+      });
+      let summary = {
+        sentiment: pos > neg ? "pos" : "neg",
+        summary: ` negative: ${neg}/ neutral: ${neut} /  positive: ${pos}`,
+      };
+      return summary;
     },
   },
   modules: {},

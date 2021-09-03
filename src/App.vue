@@ -1,7 +1,12 @@
 <template>
   <v-app>
-    <!-- <v-app-bar app color="primary" dark> -->
-    <!-- <div class="d-flex align-center">
+    <v-app-bar app color="primary" dark>
+      <v-btn @click="home" text elevation="0">
+        <v-icon v-if="userAuth.uid">mdi-home</v-icon>
+        <h4>Know your guest</h4>
+      </v-btn>
+
+      <!-- <div class="d-flex align-center">
         <v-img
           alt="Vuetify Logo"
           class="shrink mr-2"
@@ -31,17 +36,17 @@
         <span class="mr-2">Latest Release</span>
         <v-icon>mdi-open-in-new</v-icon>
       </v-btn> -->
-    <!-- </v-app-bar> -->
+    </v-app-bar>
 
-    <v-main>
-      <v-container>
+    <v-main class="ds-app">
+      <v-container class="ds-main">
         <v-row justify="center">
           <v-col sm="12" md="6">
             <router-view />
           </v-col>
         </v-row>
       </v-container>
-      <v-text-field v-model="phonenumber"></v-text-field>
+      <!-- <v-text-field v-model="phonenumber"></v-text-field>
       <button @click="checkPhoneNumber">checkPhoneNumber</button> |
       <button @click="login">Login</button> |
       <button @click="register">Register</button> |
@@ -51,12 +56,14 @@
           {{ index }}. {{ review.review }}
         </li>
         <li v-if="!reviews.length">Sorry, no reviews for this guest yet</li>
-      </ul>
+      </ul> -->
     </v-main>
   </v-app>
 </template>
 
 <script>
+import { mapState } from "vuex";
+import router from "./router";
 export default {
   name: "App",
 
@@ -80,6 +87,9 @@ export default {
     },
     reviews: [],
   }),
+  computed: {
+    ...mapState(["userAuth"]),
+  },
   methods: {
     async checkPhoneNumber() {
       console.log("Checking phone number", this.phonenumber);
@@ -117,6 +127,17 @@ export default {
       console.log("Submit review: ", this.review);
       this.$store.dispatch("addReview", this.review);
     },
+    home() {
+      router.push("/");
+    },
   },
 };
 </script>
+<style lang="scss" scoped>
+.ds-main {
+  padding: 32px 21px;
+}
+.ds-app {
+  background-color: #ebeef2;
+}
+</style>
